@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ONER宇宙生存模拟器</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">试运行30天</p>
+          <h1>ONER宇宙生存模拟器</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost-button" id="saveButton" type="button">存档</button>
+          <button class="ghost-button" id="resetButton" type="button">重开</button>
+        </div>
+      </section>
+
+      <section class="game-layout">
+        <aside class="status-panel" aria-label="当前状态">
+          <div class="date-block">
+            <span>Day</span>
+            <strong id="dayValue">1</strong>
+            <small id="weekValue">第1周</small>
+          </div>
+
+          <div class="identity-card">
+            <p class="section-kicker">当前身份</p>
+            <h2 id="identityName">未选择</h2>
+            <p id="identityTrait">先选择一个入口。</p>
+          </div>
+
+          <div class="stats-list" id="statsList"></div>
+
+          <div class="history-panel">
+            <p class="section-kicker">今日记录</p>
+            <div id="historyList" class="history-list"></div>
+          </div>
+        </aside>
+
+        <section class="main-stage" id="mainStage"></section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
