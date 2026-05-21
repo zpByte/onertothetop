@@ -1,5 +1,6 @@
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const STAT_NAMES = ["心态", "钱包", "事业", "隐蔽", "舆情", "关系"];
+const USE_MODEL_SCENES = true;
 
 const identities = [
   {
@@ -76,7 +77,7 @@ const sceneDeck = [
     text: "品牌方在群里误发了一张还没公开的 KV 图。十秒后，图片被撤回。群里没人说话，只有你知道那张图如果流出去，会把整个宣发节奏提前三天。",
     choices: [
       c("立刻提醒负责人", "负责人只回了一个“收到”。半小时后，群里重新发出保密提醒。你没有得到夸奖，但流程因为你少炸了一次。", { 事业: 8, 关系: 2, 心态: -3 }, null, "流程救火员"),
-      c("保存截图以备复盘", "你保存了截图。这个动作很专业，也很危险。后来真有人问起来源时，你发现自己手里那张图重得像证物。", { 事业: 4, 隐蔽: -7, 舆情: 5 }),
+      c("保存截图以备核对", "你保存了截图。这个动作很专业，也很危险。后来真有人问起来源时，你发现自己手里那张图重得像证物。", { 事业: 4, 隐蔽: -7, 舆情: 5 }),
       c("装作没看见", "你选择不介入。项目没有立刻出事，但之后的临时会议里，你也没有被叫去核心讨论。", { 隐蔽: 4, 事业: -4, 心态: 2 })
     ]
   },
@@ -86,10 +87,10 @@ const sceneDeck = [
     location: "47人工作群",
     title: "很难评的妆造",
     tags: ["工作", "事故"],
-    text: "你把一句“这版妆造真的很难评”发进了工作群。群里沉默了三秒，像整个项目组同时断网。更糟的是，项目负责人正在输入中。",
+    text: "你把一句“这版妆造真的很难评”发进了工作群。群里沉默了三秒，像所有人同时断网。更糟的是，项目负责人正在输入中。",
     choices: [
       c("立刻撤回并道歉", "你撤回得很快，但大家都看见了。负责人没有追究，只让你把具体问题单独整理给他。尴尬没有消失，变成了工作。", { 心态: -7, 事业: 3, 隐蔽: 2 }),
-      c("顺势改成专业反馈", "你把问题拆成灯光、服装比例和镜头适配三类。群里开始有人接话，事故被你硬拧成了小型复盘。", { 事业: 10, 心态: -5, 关系: 2 }, "phone_group_misfire", "项目复盘临时工"),
+      c("顺势改成专业意见", "你把问题拆成灯光、服装比例和镜头适配三类。群里开始有人接话，事故被你硬拧成了小型救场。", { 事业: 10, 心态: -5, 关系: 2 }, "phone_group_misfire", "临时救场选手"),
       c("说朋友拿你手机乱发", "这个解释烂到没人愿意拆穿。你保住了当场气氛，但失去了一部分可信度。", { 隐蔽: 3, 事业: -6, 心态: -2 })
     ]
   },
@@ -206,10 +207,10 @@ const sceneDeck = [
     id: "budget_meeting",
     dayRange: [13, 27],
     minStats: { 事业: 55 },
-    location: "复盘会议室",
+    location: "会议室",
     title: "让她讲吧",
     tags: ["事业", "工作"],
-    text: "复盘会上，负责人突然说：“这个部分让她讲吧，她最清楚。”你手里的笔差点被你捏断。所有人的视线都从投影转到你身上。",
+    text: "会上，负责人突然说：“这个部分让她讲吧，她最清楚。”你手里的笔差点被你捏断。所有人的视线都从投影转到你身上。",
     choices: [
       c("按表格讲完", "你没有发挥，只把事实讲清楚。会议推进得很顺，负责人最后让你下次直接进前置讨论。", { 事业: 9, 心态: -3 }, null, "合作名单边缘人"),
       c("顺便提出新方案", "你讲完问题，又补了一个方案。会议室安静了两秒，然后开始有人问细节。你知道自己往核心圈走了一步。", { 事业: 12, 关系: 2, 心态: -6 }, null, "项目核心候补"),
@@ -256,6 +257,209 @@ const sceneDeck = [
     ]
   },
   {
+    id: "elevator_badge",
+    dayRange: [17, 30],
+    identities: ["brand-pr", "assistant"],
+    location: "场馆货梯口",
+    title: "借来的工作证",
+    tags: ["后台", "工作"],
+    text: "临开场前，有人把一张临时工作证塞给你，让你去三楼拿备用物料。电梯门口的安保看了你一眼，又看了看证件上的名字。那不是你的名字。",
+    choices: [
+      c("说明是临时借用", "安保打电话确认，耽误了五分钟。物料还是送到了，流程也留下了一条干净记录。", { 事业: 5, 隐蔽: 4, 心态: -3 }),
+      c("低头快速通过", "你顺利上楼，却在监控下留下了一个不太好解释的瞬间。效率很高，风险也很具体。", { 事业: 8, 隐蔽: -6, 舆情: 4 }),
+      c("让对方自己来拿", "你把证件还回去。对方有点不高兴，但你没有为一个快递任务承担身份风险。", { 隐蔽: 7, 事业: -3, 心态: 2 })
+    ]
+  },
+  {
+    id: "makeup_room_list",
+    dayRange: [18, 30],
+    identities: ["assistant", "trainee"],
+    location: "化妆间门口",
+    title: "名单上的空格",
+    tags: ["后台", "关系"],
+    text: "化妆间门口贴着一张分组名单，你发现自己的名字被手写补在最后一行。旁边有人轻声说：“她怎么也在？”你不知道这句话是好奇、提醒，还是预告。",
+    choices: [
+      c("当没听见继续等", "你把视线放回手机。场面没有升级，但那句话在你脑子里循环了很久。", { 隐蔽: 4, 心态: -4 }),
+      c("主动问工作人员确认", "工作人员看了名单，告诉你确实是临时安排。旁边的人不再说话，你也少了一点被误会的空间。", { 事业: 5, 隐蔽: 3 }),
+      c("换到走廊另一侧", "你离开了视线中心，也错过了后来补充说明的机会。安全感回来了，信息差也回来了。", { 隐蔽: 6, 事业: -2, 心态: 1 })
+    ]
+  },
+  {
+    id: "support_truck_receipt",
+    dayRange: [18, 30],
+    location: "应援车付款页",
+    title: "多出来的一笔",
+    tags: ["粉圈", "钱包"],
+    text: "应援车尾款统计时，群主发现账上多了一笔匿名转账。金额刚好能补上缺口。你知道那笔钱是谁转的，因为转账备注是你手滑留下的缩写。",
+    choices: [
+      c("私聊群主改备注", "群主没有多问，只回了一个收到。你补上了缺口，也多了一个知道你手笔的人。", { 钱包: -10, 关系: 3, 隐蔽: -2 }),
+      c("公开说是自己转的", "群里刷了一排感谢。短暂的爽感之后，你发现大家开始默认下次还能找你。", { 关系: 6, 钱包: -12, 隐蔽: -5 }),
+      c("装作不知道", "账目最后照常通过。你没有被点名，但那条备注像一根没有拔掉的刺。", { 隐蔽: 4, 心态: -3 })
+    ]
+  },
+  {
+    id: "afterparty_invite",
+    dayRange: [19, 30],
+    minStats: { 关系: 40 },
+    location: "散场后的消息栏",
+    title: "庆功局地址",
+    tags: ["关系", "边界"],
+    text: "演出结束后，有人把庆功局地址转给你，后面只跟了一句：“方便就来。”这不是正式邀请，也不是无关信息。你盯着地图，发现它离你只有十二分钟。",
+    choices: [
+      c("回复不方便", "对方回了一个好。你没有进场，也没有给任何人留下解释空间。", { 隐蔽: 6, 关系: -2, 心态: 2 }),
+      c("只到门口送东西", "你把东西交给工作人员就走。距离控制得漂亮，但“你来过”这件事依旧存在。", { 关系: 4, 隐蔽: -3, 事业: 2 }),
+      c("过去坐二十分钟", "二十分钟里没有发生大事。真正的问题是，越是没事，越容易让人下次继续试探。", { 关系: 8, 隐蔽: -7, 心态: 3 })
+    ]
+  },
+  {
+    id: "tagged_location",
+    dayRange: [19, 30],
+    identities: ["classmate", "fansite"],
+    location: "朋友圈定位",
+    title: "同一条街",
+    tags: ["现实", "舆情"],
+    text: "你发了一张咖啡照片，没注意定位还开着。十分钟后，有人发现某个公开行程也在同一条街附近。截图开始被转，配文只有三个字：好巧哦。",
+    choices: [
+      c("立刻删掉朋友圈", "删除动作很快，截图动作更快。你止住了新增证据，但没法让已经保存的人失忆。", { 隐蔽: 5, 舆情: 4, 心态: -4 }),
+      c("补发一张远景解释", "你试图证明自己只是路过。解释越完整，围观的人越觉得有戏。", { 舆情: 8, 隐蔽: -3, 心态: -2 }),
+      c("关掉定位不回应", "你没有继续给素材。讨论过了一阵子散掉，只留下你对手机设置的永久不信任。", { 隐蔽: 7, 舆情: -2, 心态: 1 })
+    ]
+  },
+  {
+    id: "lost_in_earpiece",
+    dayRange: [20, 30],
+    identities: ["assistant", "brand-pr"],
+    location: "导播台旁",
+    title: "耳返里的杂音",
+    tags: ["直播", "工作"],
+    text: "直播前五分钟，耳返里突然混进一段杂音。主持人已经上场，导播在找技术，现场所有人的眼神都在说：现在必须有人先决定要不要延迟。",
+    choices: [
+      c("建议延迟两分钟", "两分钟很长，但事故更长。直播晚开了，画面却稳住了。", { 事业: 8, 舆情: -4, 心态: -5 }),
+      c("按原计划开始", "开场没有卡死，只是前三十秒声音很怪。粉丝剪出了搞笑片段，热度来得有点歪。", { 事业: 3, 舆情: 8, 心态: -2 }),
+      c("让技术做最终判断", "你没有越权，技术也没有及时给答案。最后大家记住的不是谁负责，而是谁没有决定。", { 隐蔽: 3, 事业: -5 })
+    ]
+  },
+  {
+    id: "anonymous_tip",
+    dayRange: [20, 30],
+    location: "匿名提问箱",
+    title: "你是不是知道内幕",
+    tags: ["粉圈", "舆情"],
+    text: "你的匿名提问箱收到一句话：“你是不是知道点内幕？”没有主语，没有证据，却精准戳中你最近每一次谨慎发言的阴影。",
+    choices: [
+      c("关闭提问箱", "入口消失了，猜测没有。你给自己减少了一块噪音来源。", { 心态: 6, 隐蔽: 4, 舆情: -2 }),
+      c("发玩笑糊弄过去", "大家笑了一会儿。可玩笑被截图后，也能变成新的阅读理解题。", { 心态: 3, 舆情: 6, 隐蔽: -3 }),
+      c("认真澄清没有内幕", "你写得很诚恳，诚恳到像真的有什么需要澄清。", { 舆情: 10, 隐蔽: -4, 心态: -4 })
+    ]
+  },
+  {
+    id: "wardrobe_mixup",
+    dayRange: [21, 30],
+    location: "服装间",
+    title: "错拿的外套",
+    tags: ["后台", "事故"],
+    text: "服装间里两件黑色外套挂在一起。你伸手拿走自己的那件，走到门口才发现袖口多了一个你不认识的饰针。身后已经有人在催下一组上场。",
+    choices: [
+      c("马上折返回去换", "你多跑了一趟，差点撞上工作人员。外套回到原位，事故停在了门口。", { 隐蔽: 6, 心态: -3 }),
+      c("先把饰针取下来", "你临时处理得很快，却把饰针放进了自己的口袋。真正麻烦的是事后归还。", { 事业: 3, 隐蔽: -4, 关系: 2 }),
+      c("问清楚外套主人", "你得到答案，也被旁边的人记住了问题本身。透明有时也是一种暴露。", { 关系: 3, 隐蔽: -2, 心态: 1 })
+    ]
+  },
+  {
+    id: "quote_out_of_context",
+    dayRange: [21, 30],
+    location: "短视频平台",
+    title: "被截断的半句话",
+    tags: ["舆情", "粉圈"],
+    text: "你之前评价舞台的一句话被截成十秒短视频。原本是在夸编排层次，截出来却像在阴阳怪气。评论区已经开始问你是哪家粉。",
+    choices: [
+      c("补完整上下文", "完整版本发出后，有人理解了，也有人说你急了。互联网很少奖励完整句子。", { 舆情: 2, 心态: -4, 隐蔽: -2 }),
+      c("删除原评", "证据少了一条，截图多了一批。你学会了删除不是时光机。", { 隐蔽: 3, 舆情: 5, 心态: -3 }),
+      c("不回应等热度过去", "你忍住了手。第二天新话题盖过旧话题，你的沉默第一次显得像策略。", { 舆情: -5, 心态: 2, 隐蔽: 4 })
+    ]
+  },
+  {
+    id: "training_room_video",
+    dayRange: [22, 30],
+    identities: ["trainee"],
+    location: "公司练习室",
+    title: "镜子里的第三个人",
+    tags: ["练习室", "事业"],
+    text: "公司发了一段练习室花絮。镜子角落里，你的身影出现了不到一秒。粉丝在夸主体，也有人开始问角落那个练习生是谁。",
+    choices: [
+      c("继续正常训练", "你没有借势，也没有逃开。老师后来提醒你，稳定比被看见更难。", { 事业: 7, 心态: 1 }),
+      c("让朋友帮忙控评论", "评论区安静了一点，但你欠下了现实关系里的一次人情。", { 舆情: -4, 关系: 3, 钱包: -4 }),
+      c("自己去看评论", "你本来只想确认情况，结果把每一条都读完了。练习还没开始，心态先热身过度。", { 心态: -8, 舆情: 3 })
+    ]
+  },
+  {
+    id: "brand_comment_liked",
+    dayRange: [22, 30],
+    identities: ["brand-pr"],
+    location: "品牌官号后台",
+    title: "手滑点赞",
+    tags: ["商务", "事故"],
+    text: "你用品牌官号检查评论时，手滑赞了一条粉丝调侃。点赞只停留了七秒，但七秒足够让截图群完成接力。",
+    choices: [
+      c("立刻取消并记录情况", "你把时间线写清楚发给负责人。没人开心，但至少团队知道该怎么解释。", { 事业: 5, 心态: -5, 舆情: 2 }),
+      c("装作运营互动", "品牌语气突然变得亲切，粉丝倒是高兴了，甲方开始问这是不是新策略。", { 舆情: -3, 事业: -3, 关系: 2 }),
+      c("甩给平台延迟", "这个理由听起来熟悉，也听起来没人真信。你暂时躲过追问，可信度掉了一点。", { 隐蔽: 3, 事业: -5 })
+    ]
+  },
+  {
+    id: "family_group_news",
+    dayRange: [23, 30],
+    location: "家庭群",
+    title: "亲戚发来的链接",
+    tags: ["现实", "心态"],
+    text: "家庭群里，亲戚转来一条标题夸张的娱乐新闻，顺手艾特你：“你不是懂这个吗？”你突然意识到，现实生活也会用最朴素的方式把你拽回风暴中心。",
+    choices: [
+      c("简单说别信营销号", "你用一句话把话题按住。亲戚没有继续问，你也没有暴露自己知道太多。", { 隐蔽: 4, 心态: 2 }),
+      c("详细解释来龙去脉", "你讲得太明白，家里人开始觉得你真的很懂。下一次他们还会问你。", { 事业: 2, 隐蔽: -4, 心态: -2 }),
+      c("假装没看到", "群聊继续滚动，没人追问。只是你知道自己连家庭群都开始躲。", { 隐蔽: 3, 心态: -4 })
+    ]
+  },
+  {
+    id: "empty_seat",
+    dayRange: [24, 30],
+    location: "内场座位区",
+    title: "旁边空出来的位置",
+    tags: ["行程", "关系"],
+    text: "你按票面坐下，发现旁边的位置一直空着。开场前，工作人员过来低声问你能不能往里挪一个座。你看见那张空椅背后贴着一张临时名牌。",
+    choices: [
+      c("照做但不多问", "你往里挪了一个座。整晚都很顺利，只是你再也没办法假装没看见那张名牌。", { 隐蔽: 4, 关系: 2, 心态: -2 }),
+      c("问为什么要换", "工作人员解释得很官方。你得到了答案，也让对方意识到你注意到了细节。", { 事业: 2, 隐蔽: -3, 心态: 1 }),
+      c("拒绝换座", "你的座位权利很清楚，现场气氛也很僵。几分钟后，对方换了另一种安排。", { 隐蔽: 6, 关系: -4, 舆情: 3 })
+    ]
+  },
+  {
+    id: "last_minute_caption",
+    dayRange: [24, 30],
+    identities: ["brand-pr", "assistant"],
+    location: "宣发文案文档",
+    title: "发布前一分钟",
+    tags: ["工作", "宣发"],
+    text: "官宣文案发布前一分钟，你发现配图顺序和正文提到的顺序对不上。所有人都在等定时发布，改一个地方可能牵动全套物料。",
+    choices: [
+      c("暂停发布重新核对", "发布晚了三分钟，但没有留下低级错误。你听见负责人叹气，也听见他说幸好。", { 事业: 9, 心态: -4 }),
+      c("只改正文顺序", "最快的问题被解决了，隐藏的问题还在。半小时后，有人发现长图里也对不上。", { 事业: 2, 舆情: 5, 心态: -3 }),
+      c("按原计划发出", "流程没有被打断，错误也没有被打断。评论区替你完成了校对。", { 舆情: 9, 事业: -6, 隐蔽: 2 })
+    ]
+  },
+  {
+    id: "solo_stage_guess",
+    dayRange: [25, 30],
+    location: "彩排厅外",
+    title: "没公开的歌单",
+    tags: ["舞台", "舆情"],
+    text: "彩排厅门没关严，你听见一段还没公开的 solo 编排。出来时，朋友正好问你今晚会不会有惊喜。你知道答案，但你也知道答案不该从你这里出去。",
+    choices: [
+      c("说不知道", "你把话咽回去。朋友有点失望，惊喜也终于还是惊喜。", { 隐蔽: 7, 关系: -1, 心态: 1 }),
+      c("只说值得期待", "你没有剧透具体内容，但足够让朋友开始猜。暧昧的提示也是提示。", { 关系: 3, 舆情: 4, 隐蔽: -3 }),
+      c("提前暗示曲风", "朋友兴奋得像中了奖。等舞台播出后，她的发言记录也像一条导火索。", { 关系: 6, 舆情: 8, 隐蔽: -6 })
+    ]
+  },
+  {
     id: "final_choice_pressure",
     dayRange: [26, 30],
     location: "收官日前夜",
@@ -295,7 +499,7 @@ const phoneStories = {
       ["同事B", "她不会真是来上班的吧？"]
     ],
     choices: [
-      c("继续专业分析", "你补了一份三页方案。第二天，它出现在正式复盘文档里。", { 事业: 8, 心态: -4 }),
+      c("继续专业分析", "你补了一份三页方案。第二天，它出现在正式文档里。", { 事业: 8, 心态: -4 }),
       c("私聊负责人", "负责人回你：下次别在大群说真话。你第一次觉得这可能算夸奖。", { 事业: 6, 关系: 2 }),
       c("说自己只是随口一提", "群里气氛恢复了，但你也从“有想法的人”退回了“手滑的人”。", { 隐蔽: 5, 事业: -3 })
     ]
@@ -339,8 +543,8 @@ const endings = [
   { id: "career_clear", title: "事业线通关：合作名单常驻", test: s => s.stats.事业 >= 80 && s.stats.舆情 < 55, text: "一开始没人知道你是谁。三十天后，所有项目表格里都多了一行你的名字。" },
   { id: "relationship_clear", title: "关系线通关：没有公开，但所有人都懂了", test: s => s.stats.关系 >= 75 && s.stats.隐蔽 >= 45 && s.stats.舆情 < 65, text: "你们没有多说什么。只是后来每一次混乱现场，总有人下意识先看向你。" },
   { id: "topic_blacklist", title: "超话黑名单永久居民", test: s => s.stats.舆情 >= 85 && s.stats.隐蔽 < 40, text: "你的名字成了超话违禁词。某种意义上，你也算拥有了专属词条。" },
-  { id: "hidden_boss", title: "低调路人，实则隐藏大佬", test: s => s.stats.隐蔽 >= 80 && s.stats.事业 >= 55, text: "没人拍到你，没人扒到你，但每次关键节点都有你的痕迹。粉圈称之为玄学，项目组称之为靠谱。" },
-  { id: "project_owner", title: "你没有成为嫂子，你成为了项目负责人", test: s => s.stats.事业 >= 70 && s.stats.关系 < 60, text: "故事没有走向暧昧。故事走向了排期、预算、复盘会和所有人都找你要最终版。" },
+  { id: "hidden_boss", title: "低调路人，实则隐藏大佬", test: s => s.stats.隐蔽 >= 80 && s.stats.事业 >= 55, text: "没人拍到你，没人扒到你，但每次关键节点都有你的痕迹。粉圈称之为玄学，合作方称之为靠谱。" },
+  { id: "project_owner", title: "你没有成为嫂子，你成为了项目负责人", test: s => s.stats.事业 >= 70 && s.stats.关系 < 60, text: "故事没有走向暧昧。故事走向了排期、预算、会议和所有人都找你要最终版。" },
   { id: "survived", title: "试运行存活", test: () => true, text: "三十天过去，你没有大红，也没有大翻车。你只是更清楚地知道，内娱真正的怪不是别人，是每周一的待办。" }
 ];
 
@@ -352,8 +556,15 @@ const initialState = {
   role: "入口身份未定",
   stats: Object.fromEntries(STAT_NAMES.map(name => [name, 0])),
   usedScenes: [],
+  usedSceneTitles: [],
   history: [],
   currentScene: null,
+  currentSceneLoading: false,
+  sceneError: null,
+  prefetchedDay: null,
+  prefetchedScene: null,
+  prefetchLoading: false,
+  prefetchError: null,
   pendingResult: null,
   pendingPhone: null,
   weekReport: null,
@@ -361,6 +572,10 @@ const initialState = {
 };
 
 let state = loadState() || structuredClone(initialState);
+if (state.currentSceneLoading) {
+  state.currentSceneLoading = false;
+  state.sceneError = "上次生成被中断了，可以再试一次。";
+}
 
 const stage = document.querySelector("#mainStage");
 const dayValue = document.querySelector("#dayValue");
@@ -387,6 +602,7 @@ function render() {
   if (state.weekReport) return renderWeekReport();
   if (state.screen === "intro" || !state.identityId) return renderIntro();
   ensureScene();
+  if (state.currentSceneLoading || state.sceneError) return renderSceneStatus();
   renderDayScene();
 }
 
@@ -421,7 +637,7 @@ function renderIntro() {
       <div class="intro-copy">
         <p class="eyebrow">ONER宇宙入口测试</p>
         <h2>你有30天。每天只有一个关键选择。</h2>
-        <p>每一天都会更新一个具体场景。你不再刷行动点，而是在工作、粉圈、舆情、关系和自我生活之间做一次反应。选择会立刻给出后果，并慢慢改变你的身份位置。</p>
+        <p>选择一个入口，进入一段高压又好笑的试运行。你会在行程、舞台、工作群、粉圈和现实生活之间做判断，看看自己最后会停在哪个位置。</p>
       </div>
       <div class="identity-grid">
         ${identities.map(identity => `
@@ -441,6 +657,11 @@ function renderIntro() {
 
 function renderDayScene() {
   const scene = state.currentScene;
+  if (!scene) {
+    setFinalEnding();
+    persistAndRender();
+    return;
+  }
   stage.innerHTML = `
     <div class="screen event-screen">
       <div>
@@ -467,12 +688,51 @@ function renderDayScene() {
   });
 }
 
+function renderSceneStatus() {
+  const isError = Boolean(state.sceneError);
+  stage.innerHTML = `
+    <div class="screen event-screen scene-status">
+      <div>
+        <div class="event-tags">
+          <span>Day ${state.day}</span>
+          <span>${isError ? "生成失败" : "模型生成中"}</span>
+        </div>
+        <h2 class="event-title">${isError ? "今天的场景卡住了" : "正在生成今天的场景"}</h2>
+        <p class="event-text">${isError ? state.sceneError : "模型正在根据你的身份、数值和历史记录写一个新问题。"}</p>
+      </div>
+      ${isError ? `
+        <div class="choice-grid">
+          <button class="choice-button" type="button" id="retryScene">再试一次</button>
+          <button class="choice-button" type="button" id="localScene">先用本地事件</button>
+        </div>
+      ` : ""}
+    </div>
+  `;
+
+  const retryButton = document.querySelector("#retryScene");
+  if (retryButton) {
+    retryButton.addEventListener("click", () => {
+      state.sceneError = null;
+      requestModelScene();
+    });
+  }
+
+  const localButton = document.querySelector("#localScene");
+  if (localButton) {
+    localButton.addEventListener("click", () => {
+      state.sceneError = null;
+      state.currentScene = selectScene();
+      persistAndRender();
+    });
+  }
+}
+
 function renderResult() {
   const result = state.pendingResult;
   stage.innerHTML = `
     <div class="screen result-screen">
       <div>
-        <p class="eyebrow">行动反馈</p>
+        <p class="eyebrow">刚刚发生</p>
         <h2 class="event-title">${result.title}</h2>
         <p class="event-text">${result.text}</p>
       </div>
@@ -536,7 +796,7 @@ function renderWeekReport() {
     <div class="screen week-screen">
       <div>
         <p class="eyebrow">周结算</p>
-        <h2 class="event-title">第${Math.ceil((state.day - 1) / 7)}周复盘</h2>
+        <h2 class="event-title">第${Math.ceil((state.day - 1) / 7)}周小结</h2>
       </div>
       <div class="week-report">
         ${state.weekReport.map(line => `<div class="report-line">${line}</div>`).join("")}
@@ -588,6 +848,7 @@ function chooseSceneOption(index) {
   applyEffects(choice.effects);
   if (choice.role) state.role = choice.role;
   state.usedScenes.push(scene.id);
+  state.usedSceneTitles = [...(state.usedSceneTitles || []), scene.title].slice(-40);
   addHistory(`选择：${choice.label}`);
   addHistory(`结果：${summarizeEffects(choice.effects)}`);
   state.pendingResult = {
@@ -601,6 +862,7 @@ function chooseSceneOption(index) {
   setAutoRole();
   checkImmediateEnding();
   persistAndRender();
+  if (!choice.phone && !state.ending) prefetchNextScene();
 }
 
 function choosePhoneOption(index) {
@@ -620,6 +882,7 @@ function choosePhoneOption(index) {
   };
   checkImmediateEnding();
   persistAndRender();
+  if (!state.ending) prefetchNextScene();
 }
 
 function advanceDay() {
@@ -640,7 +903,124 @@ function advanceDay() {
 
 function ensureScene() {
   if (state.currentScene || !state.identityId) return;
+  if (state.prefetchedDay === state.day && state.prefetchedScene) {
+    state.currentScene = state.prefetchedScene;
+    clearPrefetch();
+    return;
+  }
+  if (state.prefetchedDay === state.day && state.prefetchLoading) {
+    state.currentSceneLoading = true;
+    state.sceneError = null;
+    return;
+  }
+  if (state.currentSceneLoading || state.sceneError) return;
+  if (USE_MODEL_SCENES) {
+    requestModelScene();
+    return;
+  }
   state.currentScene = selectScene();
+}
+
+async function requestModelScene() {
+  if (state.currentScene || state.currentSceneLoading || !state.identityId) return;
+  state.currentSceneLoading = true;
+  state.sceneError = null;
+  localStorage.setItem("oner-sim-save", JSON.stringify(state));
+  render();
+
+  try {
+    const response = await fetch("/api/generate-scene", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildSceneRequest(state.day))
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "模型生成失败。");
+    state.currentScene = data.scene;
+    state.currentSceneLoading = false;
+    state.sceneError = null;
+  } catch (error) {
+    state.currentSceneLoading = false;
+    state.sceneError = error.message || "模型生成失败。";
+  }
+
+  persistAndRender();
+}
+
+async function prefetchNextScene() {
+  if (!USE_MODEL_SCENES || !state.identityId || state.ending) return;
+  const targetDay = state.day + 1;
+  if (targetDay > 30) return;
+  if (state.prefetchLoading && state.prefetchedDay === targetDay) return;
+  if (state.prefetchedScene && state.prefetchedDay === targetDay) return;
+
+  const request = buildSceneRequest(targetDay);
+  state.prefetchedDay = targetDay;
+  state.prefetchedScene = null;
+  state.prefetchLoading = true;
+  state.prefetchError = null;
+  localStorage.setItem("oner-sim-save", JSON.stringify(state));
+
+  try {
+    const response = await fetch("/api/generate-scene", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "下一天生成失败。");
+    finishPrefetch(targetDay, data.scene);
+  } catch (error) {
+    state.prefetchLoading = false;
+    state.prefetchError = error.message || "下一天生成失败。";
+    if (state.day === targetDay && !state.currentScene) {
+      state.currentSceneLoading = false;
+      state.sceneError = state.prefetchError;
+      persistAndRender();
+    } else {
+      localStorage.setItem("oner-sim-save", JSON.stringify(state));
+    }
+  }
+}
+
+function finishPrefetch(targetDay, scene) {
+  if (state.prefetchedDay !== targetDay) return;
+  state.prefetchLoading = false;
+  state.prefetchError = null;
+
+  if (state.day === targetDay && !state.currentScene) {
+    state.currentScene = scene;
+    state.currentSceneLoading = false;
+    state.sceneError = null;
+    clearPrefetch();
+    persistAndRender();
+    return;
+  }
+
+  state.prefetchedScene = scene;
+  localStorage.setItem("oner-sim-save", JSON.stringify(state));
+}
+
+function clearPrefetch() {
+  state.prefetchedDay = null;
+  state.prefetchedScene = null;
+  state.prefetchLoading = false;
+  state.prefetchError = null;
+}
+
+function buildSceneRequest(day = state.day) {
+  const identity = getIdentity();
+  return {
+    day,
+    identity,
+    role: state.role,
+    stats: state.stats,
+    recentHistory: state.history.slice(-10),
+    previousScenes: (state.usedSceneTitles || []).map((title, index) => ({
+      id: state.usedScenes[index] || title,
+      title
+    }))
+  };
 }
 
 function selectScene() {
@@ -654,8 +1034,8 @@ function selectScene() {
   });
 
   const fallback = sceneDeck.filter(scene => !state.usedScenes.includes(scene.id));
-  const pool = candidates.length ? candidates : fallback.length ? fallback : sceneDeck;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const pool = candidates.length ? candidates : fallback;
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
 }
 
 function buildWeekReport() {
@@ -663,7 +1043,7 @@ function buildWeekReport() {
   if (state.stats.心态 < 25) report.push("心态低位。你已经开始把每一次通知声听成警报。");
   if (state.stats.隐蔽 < 25) report.push("隐蔽低位。下周任何公开动作都可能变成新截图。");
   if (state.stats.舆情 > 70) report.push("舆情高位。不是每个热度都能被你解释成误会。");
-  if (state.stats.事业 > 65) report.push("事业走高。项目组开始默认你能解决问题，这也是一种身份流转。");
+  if (state.stats.事业 > 65) report.push("事业走高。更多关键任务会自然落到你手里。");
   if (state.stats.关系 > 60) report.push("关系走近。更多私聊、试探和边界问题会自然出现。");
   if (!report.length) report.push("本周没有大爆炸。你暂时保住了现实生活和内娱生活之间那条细线。");
   return report;
