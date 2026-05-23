@@ -14,6 +14,7 @@
           <h1>ONER宇宙生存模拟器</h1>
         </div>
         <div class="topbar-actions">
+          <button class="ghost-button" id="loreButton" type="button">素材库</button>
           <button class="ghost-button" id="saveButton" type="button">存档</button>
           <button class="ghost-button" id="resetButton" type="button">重开</button>
         </div>
@@ -21,24 +22,33 @@
 
       <section class="game-layout">
         <aside class="status-panel" aria-label="当前状态">
-          <div class="date-block">
-            <span>Day</span>
-            <strong id="dayValue">1</strong>
-            <small id="weekValue">第1周</small>
+          <div class="status-summary">
+            <div class="date-block">
+              <span>Day</span>
+              <strong id="dayValue">1</strong>
+              <small id="weekValue">第1周</small>
+            </div>
+
+            <div class="identity-card">
+              <p class="section-kicker">当前身份</p>
+              <h2 id="identityName">未选择</h2>
+              <p id="identityTrait">先选择一个入口。</p>
+            </div>
+
+            <div class="mobile-stat-strip" id="mobileStatStrip" aria-label="核心数值"></div>
           </div>
 
-          <div class="identity-card">
-            <p class="section-kicker">当前身份</p>
-            <h2 id="identityName">未选择</h2>
-            <p id="identityTrait">先选择一个入口。</p>
-          </div>
+          <details class="status-details" id="statusDetails" open>
+            <summary>数值与今日记录</summary>
+            <div class="status-details-body">
+              <div class="stats-list" id="statsList"></div>
 
-          <div class="stats-list" id="statsList"></div>
-
-          <div class="history-panel">
-            <p class="section-kicker">今日记录</p>
-            <div id="historyList" class="history-list"></div>
-          </div>
+              <div class="history-panel">
+                <p class="section-kicker">今日记录</p>
+                <div id="historyList" class="history-list"></div>
+              </div>
+            </div>
+          </details>
         </aside>
 
         <section class="main-stage" id="mainStage"></section>

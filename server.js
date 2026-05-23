@@ -8,6 +8,7 @@ const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 const API_URL = "https://api.deepseek.com/chat/completions";
+const LORE_CARDS = loadLoreCards();
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -21,6 +22,10 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "POST" && req.url === "/api/generate-scene") {
       return handleGenerateScene(req, res);
+    }
+
+    if (req.method === "GET" && req.url.startsWith("/api/lore-cards")) {
+      return handleLoreCards(req, res);
     }
 
     if (req.method !== "GET") {
@@ -77,25 +82,79 @@ async function handleGenerateScene(req, res) {
   return sendJson(res, 200, { scene, usage: data.usage || null, model: data.model || MODEL });
 }
 
+function handleLoreCards(req, res) {
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const query = cleanForSearch(url.searchParams.get("q") || "");
+  const type = cleanForSearch(url.searchParams.get("type") || "");
+  const mediaOnly = url.searchParams.get("media") !== "0";
+  const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") || 48)));
+
+  const cards = LORE_CARDS
+    .filter(card => !type || card.type === type)
+    .filter(card => !mediaOnly || hasMedia(card))
+    .filter(card => !query || cleanForSearch(card.search_text || card.text || "").includes(query))
+    .slice(0, limit)
+    .map(compactLoreCard);
+
+  return sendJson(res, 200, {
+    total: LORE_CARDS.length,
+    returned: cards.length,
+    cards
+  });
+}
+
+function hasMedia(card) {
+  const media = card.media || {};
+  return [
+    media.images,
+    media.videos,
+    media.live_photo_videos,
+    media.source_images,
+    media.source_videos
+  ].some(items => Array.isArray(items) && items.length);
+}
+
+function compactLoreCard(card) {
+  return {
+    id: card.id,
+    date: card.date,
+    year: card.year,
+    type: card.type,
+    text: card.text,
+    topics: card.topics || [],
+    mentions: card.mentions || [],
+    media: card.media || {},
+    metrics: card.metrics || {},
+    source: card.source || null
+  };
+}
+
 function buildMessages(input) {
   const identity = sanitizeText(input.identity?.name || "未选择");
   const trait = sanitizeText(input.identity?.trait || "");
   const role = sanitizeText(input.role || identity);
   const stats = input.stats || {};
+  const loreCards = selectLoreCards(input, { identity, trait, role, stats });
   const previousScenes = Array.isArray(input.previousScenes) ? input.previousScenes.slice(-30) : [];
   const previousText = previousScenes.length
     ? previousScenes.map(item => `- ${sanitizeText(item.title || item.id || "")}`).join("\n")
     : "- 无";
+  const loreText = formatLoreCards(loreCards);
 
   const system = `你是一个中文互动叙事游戏 DM。请只输出 json，不要输出 markdown。
 
 游戏名：ONER宇宙生存模拟器。
-体验目标：生成一个“像真实内娱生态压力测试”的每日场景，有工作、粉圈、舞台、行程、舆情、现实生活和关系边界的张力。
+ONER 固定公开背景：ONER 是坤音娱乐旗下组合，2018 年以岳岳/PINKRAY、木子洋/KWIN、卜凡/KATTO、灵超/DIDI 四人体制出道；2020 年起官博公开活动以岳岳、木子洋、灵超三人体制继续。可使用公开作品、公开舞台、官博物料、巡演、签售、超话、后援会、应援、万能人、万能超级棒等公开演艺生态元素。
+体验目标：生成一个“像真实 ONER 公开演艺生态压力测试”的每日场景，有工作、粉圈、舞台、行程、舆情、现实生活和关系边界的张力。
 安全边界：不要写真实成员私生活、恋爱实锤、隐私推断、真实负面爆料。可以写公开舞台、公开行程、团队工作场景、粉圈互动和玩家自己的选择压力。
 禁止内容：不要写购买航班/酒店/住址等隐私信息，不要写私生行为，不要写混入 VIP 通道、尾随、偷拍、肢体接触、递信塞口袋、越过安保、骚扰艺人。站姐场景只能发生在公开可拍区域，重点写边界、舆论和自我克制。
 风格：好笑、具体、有截图感，但不要像产品说明。不要出现“行动反馈”“项目组介绍”“每一天都会更新一个具体场景”等给开发者看的话。
+ONER 锚点使用规则：下面的“本回合可用 ONER 公开资料”只作为灵感锚点，不要逐字复述微博。每个场景至少自然使用 1 个锚点，比如作品名、巡演/签售/打歌/舞台场景、粉丝语汇、官宣物料或公开活动流程。
 重复限制：不要重复下面这些已经出现过的场景标题或同类问题：
 ${previousText}
+
+本回合可用 ONER 公开资料：
+${loreText}
 
 你必须返回这个 JSON 结构：
 {
@@ -130,12 +189,140 @@ ${previousText}
 当前数值：${JSON.stringify(stats)}
 最近记录：${JSON.stringify((input.recentHistory || []).slice(-8))}
 
-请让场景符合当前身份和数值，并避免和历史标题重复。`;
+请让场景符合当前身份和数值，并避免和历史标题重复。请让 ONER 锚点服务剧情冲突，不要写成资料介绍。`;
 
   return [
     { role: "system", content: system },
     { role: "user", content: user }
   ];
+}
+
+function loadLoreCards() {
+  const filePath = path.join(ROOT, "data", "oner-weibo-rag-cards.json");
+  try {
+    const cards = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return Array.isArray(cards) ? cards : [];
+  } catch (error) {
+    console.warn(`ONER lore cards not loaded: ${error.message}`);
+    return [];
+  }
+}
+
+function selectLoreCards(input, context) {
+  if (!LORE_CARDS.length) return [];
+
+  const day = Number(input.day || 1);
+  const query = buildLoreQuery(input, context);
+  const desiredTypes = preferredLoreTypes(context.identity, context.stats);
+  const recentTitles = new Set(
+    (Array.isArray(input.previousScenes) ? input.previousScenes : [])
+      .slice(-12)
+      .map(item => sanitizeText(item.title || ""))
+      .filter(Boolean)
+  );
+
+  return LORE_CARDS
+    .map((card, index) => ({
+      card,
+      score: scoreLoreCard(card, query, desiredTypes, day, recentTitles, index)
+    }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map(item => item.card);
+}
+
+function buildLoreQuery(input, context) {
+  const history = Array.isArray(input.recentHistory) ? input.recentHistory.slice(-8).join(" ") : "";
+  return cleanForSearch([
+    context.identity,
+    context.trait,
+    context.role,
+    JSON.stringify(context.stats || {}),
+    history
+  ].join(" "));
+}
+
+function preferredLoreTypes(identity, stats) {
+  const types = new Set(["stage", "release", "fan_event"]);
+  if (identity.includes("站姐")) {
+    types.add("stage");
+    types.add("fan_event");
+  }
+  if (identity.includes("品牌") || identity.includes("PR")) {
+    types.add("release");
+    types.add("fan_event");
+  }
+  if (identity.includes("后台") || identity.includes("练习生")) {
+    types.add("stage");
+    types.add("release");
+  }
+  if (Number(stats?.舆情 || 0) > 55) {
+    types.add("fan_event");
+  }
+  if (Number(stats?.事业 || 0) > 55) {
+    types.add("release");
+    types.add("award");
+  }
+  return types;
+}
+
+function scoreLoreCard(card, query, desiredTypes, day, recentTitles, index) {
+  const text = cleanForSearch(card.search_text || card.text || "");
+  let score = 0;
+
+  if (desiredTypes.has(card.type)) score += 8;
+  if (card.type === "repost") score -= 4;
+  if ((card.media?.images || []).length) score += 1;
+  if ((card.media?.videos || []).length) score += 1;
+  if (Number(card.metrics?.likes || 0) > 100000) score += 2;
+  if (card.year) score += yearAffinity(card.year, day);
+
+  const tokens = tokenize(query).filter(token => token.length >= 2);
+  for (const token of tokens) {
+    if (text.includes(token)) score += token.length >= 4 ? 3 : 1;
+  }
+
+  for (const title of recentTitles) {
+    if (title && text.includes(title)) score -= 8;
+  }
+
+  // Stable tie-breaker so the same state returns the same lore anchors.
+  score += (index % 17) / 100;
+  return score;
+}
+
+function yearAffinity(year, day) {
+  const yearNumber = Number(year);
+  if (!Number.isFinite(yearNumber)) return 0;
+  if (day <= 6 && yearNumber <= 2019) return 3;
+  if (day <= 14 && yearNumber >= 2020 && yearNumber <= 2022) return 2;
+  if (day <= 23 && yearNumber >= 2023 && yearNumber <= 2024) return 2;
+  if (day > 23 && yearNumber >= 2025) return 3;
+  return 0;
+}
+
+function formatLoreCards(cards) {
+  if (!cards.length) {
+    return "- 暂无外部资料卡，请只使用 ONER 固定公开背景。";
+  }
+
+  return cards.map((card, index) => {
+    const topics = (card.topics || []).slice(0, 3).join("、") || "无话题";
+    const mentions = (card.mentions || []).slice(0, 3).join("、") || "无成员提及";
+    const text = sanitizeText(card.text || card.source?.text || "").slice(0, 160);
+    return `${index + 1}. [${card.date || "未知日期"} / ${card.type}] 话题：${topics}；提及：${mentions}；摘要：${text}`;
+  }).join("\n");
+}
+
+function cleanForSearch(value) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function tokenize(value) {
+  return cleanForSearch(value)
+    .split(/[^0-9a-zA-Z\u4e00-\u9fa5]+/)
+    .filter(Boolean);
 }
 
 function normalizeScene(raw, input) {

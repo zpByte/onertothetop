@@ -1,6 +1,7 @@
 const SAVE_VERSION = 3;
 const STAT_NAMES = ["心态", "钱包", "事业", "隐蔽", "舆情", "关系"];
 const USE_MODEL_SCENES = true;
+const LOCAL_SERVER_HINT = "当前页面是用 file:// 打开的，不能调用本地模型接口。请在项目目录运行 npm run dev，然后访问 http://localhost:3000/。";
 
 const identities = [
   {
@@ -584,9 +585,23 @@ const identityName = document.querySelector("#identityName");
 const identityTrait = document.querySelector("#identityTrait");
 const statsList = document.querySelector("#statsList");
 const historyList = document.querySelector("#historyList");
+const mobileStatStrip = document.querySelector("#mobileStatStrip");
+const statusDetails = document.querySelector("#statusDetails");
 
+let loreBrowserOpen = false;
+let loreCards = [];
+let loreLoading = false;
+let loreError = null;
+
+document.querySelector("#loreButton").addEventListener("click", openLoreBrowser);
 document.querySelector("#saveButton").addEventListener("click", saveState);
 document.querySelector("#resetButton").addEventListener("click", resetGame);
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && loreBrowserOpen) closeLoreBrowser();
+});
+
+syncStatusDetailsForViewport();
+window.matchMedia("(max-width: 640px)").addEventListener("change", syncStatusDetailsForViewport);
 
 render();
 
@@ -612,6 +627,12 @@ function renderSidebar() {
   weekValue.textContent = `第${Math.ceil(state.day / 7)}周`;
   identityName.textContent = identity ? `${identity.name} / ${state.role}` : "未选择";
   identityTrait.textContent = identity ? identity.trait : "先选择一个入口。";
+  mobileStatStrip.innerHTML = ["心态", "钱包", "舆情"].map(name => {
+    const value = clamp(state.stats[name]);
+    const danger = name === "舆情" ? value >= 70 : value <= 25;
+    const warn = name === "舆情" ? value >= 50 && value < 70 : value <= 45 && value > 25;
+    return `<span class="mobile-stat-chip ${danger ? "danger" : warn ? "warn" : ""}">${name} ${value}</span>`;
+  }).join("");
 
   statsList.innerHTML = STAT_NAMES.map(name => {
     const value = clamp(state.stats[name]);
@@ -629,6 +650,12 @@ function renderSidebar() {
   historyList.innerHTML = today.length
     ? today.map(item => `<div class="history-item">${item.text}</div>`).join("")
     : `<div class="history-item">今日更新还没开始。</div>`;
+}
+
+function syncStatusDetailsForViewport(event) {
+  if (!statusDetails) return;
+  const isMobile = event ? event.matches : window.matchMedia("(max-width: 640px)").matches;
+  statusDetails.open = !isMobile;
 }
 
 function renderIntro() {
@@ -828,6 +855,140 @@ function renderEnding() {
   document.querySelector("#restartEnding").addEventListener("click", resetGame);
 }
 
+function openLoreBrowser() {
+  loreBrowserOpen = true;
+  renderLoreBrowser();
+  if (!loreCards.length && !loreLoading) loadLoreCards();
+}
+
+function closeLoreBrowser() {
+  loreBrowserOpen = false;
+  renderLoreBrowser();
+}
+
+async function loadLoreCards() {
+  loreLoading = true;
+  loreError = null;
+  renderLoreBrowser();
+
+  try {
+    const response = await apiFetch("/api/lore-cards?media=1&limit=60");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "素材加载失败。");
+    loreCards = Array.isArray(data.cards) ? data.cards : [];
+  } catch (error) {
+    loreError = error.message || "素材加载失败。";
+  } finally {
+    loreLoading = false;
+    renderLoreBrowser();
+  }
+}
+
+function renderLoreBrowser() {
+  const existing = document.querySelector("#loreOverlay");
+  if (!loreBrowserOpen) {
+    if (existing) existing.remove();
+    return;
+  }
+
+  const overlay = existing || document.createElement("section");
+  overlay.id = "loreOverlay";
+  overlay.className = "lore-overlay";
+  overlay.innerHTML = `
+    <div class="lore-backdrop" data-lore-close></div>
+    <div class="lore-panel" role="dialog" aria-modal="true" aria-label="ONER微博素材库">
+      <div class="lore-header">
+        <div>
+          <p class="eyebrow">ONER微博素材库</p>
+          <h2>图片 / 视频预览</h2>
+        </div>
+        <button class="ghost-button" type="button" data-lore-close>关闭</button>
+      </div>
+      <div class="lore-note">点击图片可打开原图；视频可直接播放，也可点“打开视频”。部分微博 CDN 链接可能过期，组件会保留外链兜底。</div>
+      ${renderLoreContent()}
+    </div>
+  `;
+
+  if (!existing) document.body.appendChild(overlay);
+  overlay.querySelectorAll("[data-lore-close]").forEach(element => {
+    element.addEventListener("click", closeLoreBrowser);
+  });
+}
+
+function renderLoreContent() {
+  if (loreLoading) {
+    return `<div class="lore-empty">正在加载微博素材...</div>`;
+  }
+
+  if (loreError) {
+    return `<div class="lore-empty">加载失败：${escapeHtml(loreError)}</div>`;
+  }
+
+  if (!loreCards.length) {
+    return `<div class="lore-empty">还没有可预览的图片或视频素材。</div>`;
+  }
+
+  return `
+    <div class="lore-grid">
+      ${loreCards.map(renderLoreCard).join("")}
+    </div>
+  `;
+}
+
+function renderLoreCard(card) {
+  const images = uniqueMedia([...(card.media?.images || []), ...(card.media?.source_images || [])]).slice(0, 6);
+  const videos = uniqueMedia([
+    ...(card.media?.videos || []),
+    ...(card.media?.source_videos || []),
+    ...(card.media?.live_photo_videos || [])
+  ]).slice(0, 3);
+  const topics = (card.topics || []).slice(0, 3);
+  const text = card.text || card.source?.text || "";
+
+  return `
+    <article class="lore-card">
+      <div class="lore-card-meta">
+        <span>${escapeHtml(card.date ? card.date.slice(0, 10) : "未知日期")}</span>
+        <span>${escapeHtml(card.type || "post")}</span>
+      </div>
+      <p class="lore-card-text">${escapeHtml(text).slice(0, 180)}</p>
+      ${topics.length ? `<div class="lore-topic-row">${topics.map(topic => `<span>${escapeHtml(topic)}</span>`).join("")}</div>` : ""}
+      ${images.length ? `<div class="lore-media-grid">${images.map(renderImagePreview).join("")}</div>` : ""}
+      ${videos.length ? `<div class="lore-video-list">${videos.map(renderVideoPreview).join("")}</div>` : ""}
+    </article>
+  `;
+}
+
+function renderImagePreview(url, index) {
+  const safe = safeMediaUrl(url);
+  if (!safe) return "";
+  return `
+    <a class="lore-image-link" href="${escapeAttr(safe)}" target="_blank" rel="noreferrer noopener" title="打开原图">
+      <img src="${escapeAttr(safe)}" alt="微博图片 ${index + 1}" loading="lazy" referrerpolicy="no-referrer" />
+    </a>
+  `;
+}
+
+function renderVideoPreview(url, index) {
+  const safe = safeMediaUrl(url);
+  if (!safe) return "";
+  return `
+    <div class="lore-video-item">
+      <video controls preload="metadata" playsinline src="${escapeAttr(safe)}"></video>
+      <a href="${escapeAttr(safe)}" target="_blank" rel="noreferrer noopener">打开视频 ${index + 1}</a>
+    </div>
+  `;
+}
+
+function uniqueMedia(items) {
+  return [...new Set(items.filter(Boolean).map(item => String(item).trim()).filter(Boolean))];
+}
+
+function safeMediaUrl(url) {
+  const value = String(url || "").trim();
+  return /^https?:\/\//i.test(value) ? value : "";
+}
+
 function chooseIdentity(id) {
   const identity = identities.find(item => item.id === id);
   state = {
@@ -929,7 +1090,7 @@ async function requestModelScene() {
   render();
 
   try {
-    const response = await fetch("/api/generate-scene", {
+    const response = await apiFetch("/api/generate-scene", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildSceneRequest(state.day))
@@ -962,7 +1123,7 @@ async function prefetchNextScene() {
   localStorage.setItem("oner-sim-save", JSON.stringify(state));
 
   try {
-    const response = await fetch("/api/generate-scene", {
+    const response = await apiFetch("/api/generate-scene", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request)
@@ -1021,6 +1182,13 @@ function buildSceneRequest(day = state.day) {
       title
     }))
   };
+}
+
+function apiFetch(url, options) {
+  if (window.location.protocol === "file:") {
+    return Promise.reject(new Error(LOCAL_SERVER_HINT));
+  }
+  return fetch(url, options);
 }
 
 function selectScene() {
@@ -1091,6 +1259,19 @@ function getIdentity() {
 
 function clamp(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value);
 }
 
 function persistAndRender() {
