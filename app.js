@@ -2,6 +2,7 @@ const SAVE_VERSION = 3;
 const STAT_NAMES = ["心态", "钱包", "事业", "隐蔽", "舆情", "关系"];
 const USE_MODEL_SCENES = true;
 const LOCAL_SERVER_HINT = "当前页面是用 file:// 打开的，不能调用本地模型接口。请在项目目录运行 npm run dev，然后访问 http://localhost:3000/。";
+const XGPLAYER_CDN = "https://cdn.jsdelivr.net/npm/xgplayer@3/dist/index.min.js";
 
 const identities = [
   {
@@ -588,17 +589,12 @@ const historyList = document.querySelector("#historyList");
 const mobileStatStrip = document.querySelector("#mobileStatStrip");
 const statusDetails = document.querySelector("#statusDetails");
 
-let loreBrowserOpen = false;
-let loreCards = [];
-let loreLoading = false;
-let loreError = null;
+let expandedLoreSceneId = null;
+let loadedVideoPlayerScript = null;
+const videoPlayerInstances = new Map();
 
-document.querySelector("#loreButton").addEventListener("click", openLoreBrowser);
 document.querySelector("#saveButton").addEventListener("click", saveState);
 document.querySelector("#resetButton").addEventListener("click", resetGame);
-document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && loreBrowserOpen) closeLoreBrowser();
-});
 
 syncStatusDetailsForViewport();
 window.matchMedia("(max-width: 640px)").addEventListener("change", syncStatusDetailsForViewport);
@@ -659,6 +655,7 @@ function syncStatusDetailsForViewport(event) {
 }
 
 function renderIntro() {
+  destroyVideoPlayers();
   stage.innerHTML = `
     <div class="screen intro-screen">
       <div class="intro-copy">
@@ -689,6 +686,7 @@ function renderDayScene() {
     persistAndRender();
     return;
   }
+  destroyVideoPlayers();
   stage.innerHTML = `
     <div class="screen event-screen">
       <div>
@@ -699,6 +697,7 @@ function renderDayScene() {
         </div>
         <h2 class="event-title">${scene.title}</h2>
         <p class="event-text">${scene.text}</p>
+        ${renderSceneLorePanel(scene)}
       </div>
       <div class="choice-grid">
         ${scene.choices.map((choice, index) => `
@@ -713,9 +712,25 @@ function renderDayScene() {
   stage.querySelectorAll("[data-choice]").forEach(button => {
     button.addEventListener("click", () => chooseSceneOption(Number(button.dataset.choice)));
   });
+
+  const lorePanel = stage.querySelector("#sceneLorePanel");
+  if (lorePanel) {
+    lorePanel.addEventListener("toggle", () => {
+      if (lorePanel.open) {
+        expandedLoreSceneId = scene.id;
+        initSceneLorePlayers(lorePanel);
+      } else {
+        expandedLoreSceneId = null;
+        destroyVideoPlayers();
+      }
+    });
+
+    if (lorePanel.open) initSceneLorePlayers(lorePanel);
+  }
 }
 
 function renderSceneStatus() {
+  destroyVideoPlayers();
   const isError = Boolean(state.sceneError);
   stage.innerHTML = `
     <div class="screen event-screen scene-status">
@@ -755,6 +770,7 @@ function renderSceneStatus() {
 }
 
 function renderResult() {
+  destroyVideoPlayers();
   const result = state.pendingResult;
   stage.innerHTML = `
     <div class="screen result-screen">
@@ -786,6 +802,7 @@ function renderResult() {
 }
 
 function renderPhone(story) {
+  destroyVideoPlayers();
   stage.innerHTML = `
     <div class="screen phone-screen">
       <div class="phone-frame">
@@ -819,6 +836,7 @@ function renderPhone(story) {
 }
 
 function renderWeekReport() {
+  destroyVideoPlayers();
   stage.innerHTML = `
     <div class="screen week-screen">
       <div>
@@ -838,6 +856,7 @@ function renderWeekReport() {
 }
 
 function renderEnding() {
+  destroyVideoPlayers();
   stage.innerHTML = `
     <div class="screen ending-screen">
       <div>
@@ -855,87 +874,28 @@ function renderEnding() {
   document.querySelector("#restartEnding").addEventListener("click", resetGame);
 }
 
-function openLoreBrowser() {
-  loreBrowserOpen = true;
-  renderLoreBrowser();
-  if (!loreCards.length && !loreLoading) loadLoreCards();
-}
+function renderSceneLorePanel(scene) {
+  const cards = Array.isArray(scene.lore_cards) ? scene.lore_cards.filter(hasRenderableLore) : [];
+  if (!cards.length) return "";
 
-function closeLoreBrowser() {
-  loreBrowserOpen = false;
-  renderLoreBrowser();
-}
-
-async function loadLoreCards() {
-  loreLoading = true;
-  loreError = null;
-  renderLoreBrowser();
-
-  try {
-    const response = await apiFetch("/api/lore-cards?media=1&limit=60");
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "素材加载失败。");
-    loreCards = Array.isArray(data.cards) ? data.cards : [];
-  } catch (error) {
-    loreError = error.message || "素材加载失败。";
-  } finally {
-    loreLoading = false;
-    renderLoreBrowser();
-  }
-}
-
-function renderLoreBrowser() {
-  const existing = document.querySelector("#loreOverlay");
-  if (!loreBrowserOpen) {
-    if (existing) existing.remove();
-    return;
-  }
-
-  const overlay = existing || document.createElement("section");
-  overlay.id = "loreOverlay";
-  overlay.className = "lore-overlay";
-  overlay.innerHTML = `
-    <div class="lore-backdrop" data-lore-close></div>
-    <div class="lore-panel" role="dialog" aria-modal="true" aria-label="ONER微博素材库">
-      <div class="lore-header">
-        <div>
-          <p class="eyebrow">ONER微博素材库</p>
-          <h2>图片 / 视频预览</h2>
-        </div>
-        <button class="ghost-button" type="button" data-lore-close>关闭</button>
-      </div>
-      <div class="lore-note">点击图片可打开原图；视频可直接播放，也可点“打开视频”。部分微博 CDN 链接可能过期，组件会保留外链兜底。</div>
-      ${renderLoreContent()}
-    </div>
-  `;
-
-  if (!existing) document.body.appendChild(overlay);
-  overlay.querySelectorAll("[data-lore-close]").forEach(element => {
-    element.addEventListener("click", closeLoreBrowser);
-  });
-}
-
-function renderLoreContent() {
-  if (loreLoading) {
-    return `<div class="lore-empty">正在加载微博素材...</div>`;
-  }
-
-  if (loreError) {
-    return `<div class="lore-empty">加载失败：${escapeHtml(loreError)}</div>`;
-  }
-
-  if (!loreCards.length) {
-    return `<div class="lore-empty">还没有可预览的图片或视频素材。</div>`;
-  }
-
+  const isOpen = expandedLoreSceneId === scene.id;
   return `
-    <div class="lore-grid">
-      ${loreCards.map(renderLoreCard).join("")}
-    </div>
+    <details class="scene-lore-panel" id="sceneLorePanel" ${isOpen ? "open" : ""}>
+      <summary>
+        <span>ONER公开素材</span>
+        <small>${cards.length} 条</small>
+      </summary>
+      <div class="scene-lore-body">
+        <p class="scene-lore-note">素材来自 ONER 官博公开内容，只用于解释本回合灵感锚点。图片点击打开原图；视频展开后再初始化播放器。</p>
+        <div class="lore-grid">
+          ${cards.map(renderLoreCard).join("")}
+        </div>
+      </div>
+    </details>
   `;
 }
 
-function renderLoreCard(card) {
+function renderLoreCard(card, cardIndex) {
   const images = uniqueMedia([...(card.media?.images || []), ...(card.media?.source_images || [])]).slice(0, 6);
   const videos = uniqueMedia([
     ...(card.media?.videos || []),
@@ -954,7 +914,7 @@ function renderLoreCard(card) {
       <p class="lore-card-text">${escapeHtml(text).slice(0, 180)}</p>
       ${topics.length ? `<div class="lore-topic-row">${topics.map(topic => `<span>${escapeHtml(topic)}</span>`).join("")}</div>` : ""}
       ${images.length ? `<div class="lore-media-grid">${images.map(renderImagePreview).join("")}</div>` : ""}
-      ${videos.length ? `<div class="lore-video-list">${videos.map(renderVideoPreview).join("")}</div>` : ""}
+      ${videos.length ? `<div class="lore-video-list">${videos.map((url, index) => renderVideoPreview(url, `${cardIndex}-${index}`)).join("")}</div>` : ""}
     </article>
   `;
 }
@@ -969,15 +929,105 @@ function renderImagePreview(url, index) {
   `;
 }
 
-function renderVideoPreview(url, index) {
+function renderVideoPreview(url, id) {
   const safe = safeMediaUrl(url);
   if (!safe) return "";
+  const playerId = `lore-video-${id}`;
   return `
-    <div class="lore-video-item">
-      <video controls preload="metadata" playsinline src="${escapeAttr(safe)}"></video>
-      <a href="${escapeAttr(safe)}" target="_blank" rel="noreferrer noopener">打开视频 ${index + 1}</a>
+    <div class="lore-video-item" data-video-url="${escapeAttr(safe)}" data-player-id="${escapeAttr(playerId)}">
+      <div class="lore-video-mount" id="${escapeAttr(playerId)}" hidden></div>
+      <video class="native-video-fallback" controls preload="metadata" playsinline src="${escapeAttr(safe)}"></video>
+      <a href="${escapeAttr(safe)}" target="_blank" rel="noreferrer noopener">打开视频链接</a>
     </div>
   `;
+}
+
+function hasRenderableLore(card) {
+  if (!card) return false;
+  const media = card.media || {};
+  return Boolean(
+    card.text ||
+    (card.topics || []).length ||
+    (media.images || []).length ||
+    (media.source_images || []).length ||
+    (media.videos || []).length ||
+    (media.source_videos || []).length ||
+    (media.live_photo_videos || []).length
+  );
+}
+
+function initSceneLorePlayers(container) {
+  const items = [...container.querySelectorAll(".lore-video-item")];
+  if (!items.length) return;
+
+  loadVideoPlayerScript()
+    .then(() => {
+      const PlayerClass = window.Player || window.XGPlayer || window.xgplayer?.Player;
+      if (!PlayerClass) return;
+
+      items.forEach(item => {
+        const id = item.dataset.playerId;
+        const url = item.dataset.videoUrl;
+        const mount = item.querySelector(".lore-video-mount");
+        const fallback = item.querySelector(".native-video-fallback");
+        if (!id || !url || !mount || videoPlayerInstances.has(id)) return;
+
+        try {
+          const player = new PlayerClass({
+            el: mount,
+            url,
+            width: "100%",
+            height: "100%",
+            videoInit: true,
+            playsinline: true
+          });
+          videoPlayerInstances.set(id, player);
+          fallback.hidden = true;
+          mount.hidden = false;
+        } catch {
+          mount.hidden = true;
+          fallback.hidden = false;
+        }
+      });
+    })
+    .catch(() => {
+      items.forEach(item => {
+        const mount = item.querySelector(".lore-video-mount");
+        const fallback = item.querySelector(".native-video-fallback");
+        if (mount) mount.hidden = true;
+        if (fallback) fallback.hidden = false;
+      });
+    });
+}
+
+function loadVideoPlayerScript() {
+  if (window.Player || window.XGPlayer || window.xgplayer?.Player) return Promise.resolve();
+  if (loadedVideoPlayerScript) return loadedVideoPlayerScript;
+
+  loadedVideoPlayerScript = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = XGPLAYER_CDN;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = () => {
+      loadedVideoPlayerScript = null;
+      reject(new Error("xgplayer 加载失败"));
+    };
+    document.head.appendChild(script);
+  });
+
+  return loadedVideoPlayerScript;
+}
+
+function destroyVideoPlayers() {
+  videoPlayerInstances.forEach(player => {
+    try {
+      if (typeof player.destroy === "function") player.destroy();
+    } catch {
+      // Player cleanup is best effort; stale DOM will be replaced by render.
+    }
+  });
+  videoPlayerInstances.clear();
 }
 
 function uniqueMedia(items) {

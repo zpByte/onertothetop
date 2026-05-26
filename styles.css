@@ -594,66 +594,69 @@ h1 {
   font-weight: 900;
 }
 
-.lore-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.lore-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(16, 16, 16, 0.58);
-}
-
-.lore-panel {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 16px;
-  width: min(1120px, 100%);
-  max-height: min(86vh, 880px);
-  overflow: auto;
-  padding: 20px;
-  border: 3px solid var(--ink);
+.scene-lore-panel {
+  max-width: 860px;
+  margin-top: 18px;
+  border: 2px solid var(--ink);
   border-radius: 8px;
-  background: var(--paper-strong);
-  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.38);
+  background: rgba(255, 250, 240, 0.78);
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-.lore-header {
+.scene-lore-panel summary {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 14px;
-  border-bottom: 2px solid var(--ink);
+  gap: 12px;
+  min-height: 46px;
+  padding: 10px 13px;
+  cursor: pointer;
+  font-weight: 900;
+  list-style: none;
 }
 
-.lore-header h2 {
-  margin: 0;
-  font-size: clamp(26px, 4vw, 42px);
+.scene-lore-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.scene-lore-panel summary::after {
+  content: "+";
+  font-size: 20px;
   line-height: 1;
 }
 
-.lore-note,
-.lore-empty {
-  padding: 12px 14px;
-  border: 2px solid var(--line);
-  border-radius: 8px;
+.scene-lore-panel[open] summary {
+  border-bottom: 2px solid var(--ink);
+  background: #f0cc72;
+}
+
+.scene-lore-panel[open] summary::after {
+  content: "-";
+}
+
+.scene-lore-panel summary small {
+  margin-left: auto;
   color: var(--muted);
-  background: rgba(0, 127, 122, 0.08);
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+}
+
+.scene-lore-body {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+}
+
+.scene-lore-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
   line-height: 1.55;
 }
 
 .lore-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .lore-card {
@@ -734,9 +737,11 @@ h1 {
   gap: 8px;
 }
 
+.lore-video-mount,
 .lore-video-item video {
   display: block;
   width: 100%;
+  aspect-ratio: 16 / 9;
   max-height: 260px;
   border: 2px solid var(--ink);
   border-radius: 8px;
@@ -829,7 +834,7 @@ h1 {
   .topbar-actions {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -987,15 +992,6 @@ h1 {
 
   .history-list {
     max-height: 120px;
-  }
-
-  .lore-overlay {
-    padding: 10px;
-  }
-
-  .lore-panel {
-    max-height: 92vh;
-    padding: 14px;
   }
 
   .lore-media-grid {

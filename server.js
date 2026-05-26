@@ -53,6 +53,7 @@ async function handleGenerateScene(req, res) {
   }
 
   const input = await readJsonBody(req);
+  const prompt = buildMessages(input);
   const response = await fetch(API_URL, {
     method: "POST",
     headers: {
@@ -61,7 +62,7 @@ async function handleGenerateScene(req, res) {
     },
     body: JSON.stringify({
       model: MODEL,
-      messages: buildMessages(input),
+      messages: prompt.messages,
       response_format: { type: "json_object" },
       thinking: { type: "disabled" },
       temperature: 0.95,
@@ -78,7 +79,7 @@ async function handleGenerateScene(req, res) {
 
   const content = data?.choices?.[0]?.message?.content;
   const rawScene = parseModelJson(content);
-  const scene = normalizeScene(rawScene, input);
+  const scene = normalizeScene(rawScene, input, prompt.loreCards);
   return sendJson(res, 200, { scene, usage: data.usage || null, model: data.model || MODEL });
 }
 
@@ -191,10 +192,13 @@ ${loreText}
 
 请让场景符合当前身份和数值，并避免和历史标题重复。请让 ONER 锚点服务剧情冲突，不要写成资料介绍。`;
 
-  return [
-    { role: "system", content: system },
-    { role: "user", content: user }
-  ];
+  return {
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ],
+    loreCards
+  };
 }
 
 function loadLoreCards() {
@@ -221,15 +225,25 @@ function selectLoreCards(input, context) {
       .filter(Boolean)
   );
 
-  return LORE_CARDS
+  const ranked = LORE_CARDS
     .map((card, index) => ({
       card,
       score: scoreLoreCard(card, query, desiredTypes, day, recentTitles, index)
     }))
     .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
-    .map(item => item.card);
+    .sort((a, b) => b.score - a.score);
+
+  const selected = [];
+  const seen = new Set();
+  for (const item of ranked) {
+    const key = item.card.id || `${item.card.date || ""}:${item.card.text || ""}`.slice(0, 120);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selected.push(item.card);
+    if (selected.length >= 4) break;
+  }
+
+  return selected;
 }
 
 function buildLoreQuery(input, context) {
@@ -325,7 +339,7 @@ function tokenize(value) {
     .filter(Boolean);
 }
 
-function normalizeScene(raw, input) {
+function normalizeScene(raw, input, loreCards = []) {
   if (!raw || typeof raw !== "object") throw new Error("模型没有返回有效 JSON。");
   const choices = Array.isArray(raw.choices) ? raw.choices.slice(0, 3) : [];
   if (choices.length !== 3) throw new Error("模型返回的选项数量不是 3 个。");
@@ -336,6 +350,7 @@ function normalizeScene(raw, input) {
     title: clean(raw.title, "新的场景", 18),
     tags: normalizeTags(raw.tags),
     text: clean(raw.text, "今天出现了一个新的状况，你需要立刻做判断。", 220),
+    lore_cards: loreCards.map(compactLoreCard),
     choices: choices.map(choice => ({
       label: clean(choice.label, "先稳住", 32),
       result: clean(choice.result, "事情暂时告一段落，但影响已经留下。", 180),
